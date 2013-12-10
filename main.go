@@ -8,7 +8,32 @@ import (
 	"github.com/pavel-paulau/gateload/workload"
 )
 
-const DocsPerUser = 1000000
+const (
+	DocsPerUser = 1000000
+	MaxSamplers = 100
+)
+
+var activeSamplers int
+
+func measureLatency(c *api.SyncGatewayClient, doc api.Doc) {
+	measurePushLatency(c, doc)
+	measurePullLatency(c, doc)
+	activeSamplers--
+}
+
+func measurePushLatency(c *api.SyncGatewayClient, doc api.Doc) {
+	t0 := time.Now()
+	c.PutSingleDoc(doc.Id, doc)
+	t1 := time.Now()
+	log.Printf("Push latency (ns): %11d\n", t1.Sub(t0)*time.Nanosecond)
+}
+
+func measurePullLatency(c *api.SyncGatewayClient, doc api.Doc) {
+	t0 := time.Now()
+	c.GetSingleDoc(doc.Id)
+	t1 := time.Now()
+	log.Printf("Pull latency (ns): %11d\n", t1.Sub(t0)*time.Nanosecond)
+}
 
 func main() {
 	var config workload.Config
@@ -23,19 +48,12 @@ func main() {
 	cookie := c.CreateSession(user.Name, session)
 	c.AddCookie(&cookie)
 
+	activeSamplers = 0
 	for doc := range workload.DocIterator(0, DocsPerUser, config.DocSize, "stats") {
-		log.Println("                   S_M__U__N__")
-
-		t0 := time.Now()
-		c.PutSingleDoc(doc.Id, doc)
-		t1 := time.Now()
-		log.Printf("Push latency (ns): %11d\n", t1.Sub(t0)*time.Nanosecond)
-
-		t0 = time.Now()
-		c.GetSingleDoc(doc.Id)
-		t1 = time.Now()
-		log.Printf("Pull latency (ns): %11d\n", t1.Sub(t0)*time.Nanosecond)
-
-		time.Sleep(time.Duration(10000) * time.Millisecond)
+		if activeSamplers < MaxSamplers {
+			activeSamplers++
+			go measureLatency(&c, doc)
+		}
+		time.Sleep(time.Duration(1000) * time.Millisecond)
 	}
 }
