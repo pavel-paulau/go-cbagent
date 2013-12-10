@@ -1,7 +1,8 @@
 package main
 
 import (
-	"log"
+	"fmt"
+	"math"
 	"runtime"
 	"time"
 
@@ -17,23 +18,27 @@ const (
 var activeSamplers int
 
 func measureLatency(c *api.SyncGatewayClient, doc api.Doc) {
-	measurePushLatency(c, doc)
-	measurePullLatency(c, doc)
+	timestamp, latency := measurePushLatency(c, doc)
+	fmt.Printf("push %d %.1f\n", timestamp, latency)
+
+	timestamp, latency = measurePullLatency(c, doc)
+	fmt.Printf("pull %d %.1f\n", timestamp, latency)
+
 	activeSamplers--
 }
 
-func measurePushLatency(c *api.SyncGatewayClient, doc api.Doc) {
+func measurePushLatency(c *api.SyncGatewayClient, doc api.Doc) (int64, float64) {
 	t0 := time.Now()
 	c.PutSingleDoc(doc.Id, doc)
-	t1 := time.Now()
-	log.Printf("Push latency (ns): %11d\n", t1.Sub(t0)*time.Nanosecond)
+	t1 := time.Now().Round(100 * time.Microsecond)
+	return t0.UnixNano(), float64(t1.Sub(t0.Round(100*time.Microsecond))) / math.Pow10(6)
 }
 
-func measurePullLatency(c *api.SyncGatewayClient, doc api.Doc) {
+func measurePullLatency(c *api.SyncGatewayClient, doc api.Doc) (int64, float64) {
 	t0 := time.Now()
 	c.GetSingleDoc(doc.Id)
-	t1 := time.Now()
-	log.Printf("Pull latency (ns): %11d\n", t1.Sub(t0)*time.Nanosecond)
+	t1 := time.Now().Round(100 * time.Microsecond)
+	return t0.UnixNano(), float64(t1.Sub(t0.Round(100*time.Microsecond))) / math.Pow10(6)
 }
 
 func main() {
