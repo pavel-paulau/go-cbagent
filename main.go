@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"runtime"
 	"time"
 
 	"github.com/pavel-paulau/gateload/api"
@@ -36,6 +37,8 @@ func measurePullLatency(c *api.SyncGatewayClient, doc api.Doc) {
 }
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	var config workload.Config
 	workload.ReadConfig(&config)
 
