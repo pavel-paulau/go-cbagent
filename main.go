@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"math"
 	"runtime"
 	"time"
 
 	"github.com/pavel-paulau/gateload/api"
 	"github.com/pavel-paulau/gateload/workload"
+	"github.com/pavel-paulau/seriesly-go-client"
 )
 
 const (
@@ -17,12 +17,12 @@ const (
 
 var activeSamplers int
 
-func measureLatency(c *api.SyncGatewayClient, doc api.Doc) {
+func measureLatency(c *api.SyncGatewayClient, s *seriesly.SerieslyClient, doc api.Doc) {
 	timestamp, latency := measurePushLatency(c, doc)
-	fmt.Printf("push %d %.1f\n", timestamp, latency)
+	s.Append(timestamp, map[string]interface{}{"gateway_push": latency})
 
 	timestamp, latency = measurePullLatency(c, doc)
-	fmt.Printf("pull %d %.1f\n", timestamp, latency)
+	s.Append(timestamp, map[string]interface{}{"gateway_pull": latency})
 
 	activeSamplers--
 }
@@ -47,6 +47,9 @@ func main() {
 	var config workload.Config
 	workload.ReadConfig(&config)
 
+	s := seriesly.SerieslyClient{}
+	s.Init(config.SerieslyHostname, config.SerieslyDatabase)
+
 	c := api.SyncGatewayClient{}
 	c.Init(config.Hostname, config.Database)
 
@@ -60,7 +63,7 @@ func main() {
 	for doc := range workload.DocIterator(0, DocsPerUser, config.DocSize, "stats") {
 		if activeSamplers < MaxSamplers {
 			activeSamplers++
-			go measureLatency(&c, doc)
+			go measureLatency(&c, &s, doc)
 		}
 		time.Sleep(time.Duration(1000) * time.Millisecond)
 	}
