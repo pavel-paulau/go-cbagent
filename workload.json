@@ -1,0 +1,7 @@
+{
+  "Hostname": "127.0.0.1",
+  "Database": "db",
+  "DocSize": 1024,
+  "SerieslyHostname": "127.0.0.1",
+  "SerieslyDatabase": "testdb"
+}
