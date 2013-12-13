@@ -48,7 +48,7 @@ func main() {
 	workload.ReadConfig(&config)
 
 	s := seriesly.SerieslyClient{}
-	s.Init(config.SerieslyHostname, config.SerieslyDatabase)
+	s.Init(config.SerieslyHostname, "sync_latency"+config.SerieslyDatabase)
 
 	c := api.SyncGatewayClient{}
 	c.Init(config.Hostname, config.Database)
